@@ -35,7 +35,7 @@ RUN pip3 install uv
 # Install the Custom Optimized PyTorch Wheel
 # Note: The wheel must be built separately using Dockerfile-pytorch-zenver3-builder
 # and placed in the dist/ directory before building this Dockerfile
-COPY dist/*.whl /tmp/torch.whl
+COPY wheels/*.whl /tmp/torch.whl
 RUN pip3 install /tmp/torch.whl && rm /tmp/torch.whl
 
 # Create working directory and copy Ultralytics source for editable install
