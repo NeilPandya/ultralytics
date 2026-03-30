@@ -14,14 +14,19 @@ RUN git clone --recursive https://github.com/pytorch/pytorch.git && \
     git submodule update --init --recursive
 
 # PyTorch's build system (especially Caffe2) has legacy code that can bypass standard compiler flags.
-# Keep all the AMD-specific optimizations (AVX2, FMA, etc.) while specifically excluding just AVX-512.
+# Keep all the AMD-specific optimizations (AVX2, FMA, etc.) while specifically excluding just AVX-512. This is for Zen 4 (`zenver3`) architectures.
 ENV CXXFLAGS="-march=znver3 -O3 -fPIC -mno-avx512f -mno-avx512bw -mno-avx512dq"
 ENV CFLAGS="-march=znver3 -O3 -fPIC -mno-avx512f -mno-avx512bw -mno-avx512dq"
 ENV USE_CUDA=1
 ENV TORCH_CUDA_ARCH_LIST="8.6"
+# This is the most effective way to tell the ATen library (PyTorch's core) to stop at AVX2.
+ENV ATEN_CPU_CAPABILITY=avx2
+ENV CAFFE2_COMPILER_SUPPORTS_AVX512_EXTENSIONS=OFF
 # Keep MKL-DNN for other optimizations, but disable AVX-512
 ENV USE_MKLDNN=1
 ENV DISABLE_AVX512=ON
+ENV MKLDNN_ENABLE_AVX512=OFF
+ENV MKLDNN_ENABLE_AVX512_CORE=OFF
 
 # Use `--break-system-packages`
 # PyTorch base images starting with version 2.11 enforce PEP 668, which prevents global pip installations without explicit opt-in.
