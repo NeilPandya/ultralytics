@@ -1,0 +1,119 @@
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
+# Builds ultralytics/ultralytics:latest image on DockerHub https://hub.docker.com/r/ultralytics/ultralytics
+# Image is CUDA-optimized for YOLO single/multi-GPU training and inference
+
+# ==============================================================================
+# STAGE 1: BUILDER
+# Goal: Compile PyTorch from source with NVIDIA Ampere &&
+# AMD Zen 3 optimizations (`-march=znver3` & `TORCH_CUDA_ARCH_LIST="8.6"`)
+# ==============================================================================
+FROM pytorch/pytorch:2.9.1-cuda12.8-cudnn9-devel AS builder
+
+# 1. Install Build Dependencies
+# We need python3-dev and build tools to compile PyTorch
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    cmake ninja-build git libopenblas-dev python3-pip python3-dev build-essential && \
+    rm -rf /var/lib/apt/lists/*
+
+# 2. Clone PyTorch (Matching the version from Ultralytics base: 2.9.1)
+WORKDIR /opt/pytorch
+RUN git clone --recursive https://github.com/pytorch/pytorch.git && \
+    cd pytorch && \
+    git checkout v2.9.1
+
+# 3. Set Optimization Flags for AMD Zen 3 (e.g., 5950X, 5900HS) + RTX 3090 (Ampere)
+ENV CXXFLAGS="-march=znver3 -O3 -fPIC"
+ENV CFLAGS="-march=znver3 -O3 -fPIC"
+ENV USE_CUDA=1
+ENV USE_CUDNN=1
+ENV TORCH_CUDA_ARCH_LIST="8.6"
+ENV CMAKE_PREFIX_PATH="/usr/local/cuda"
+
+# 4. Build PyTorch as a Python Wheel
+# This creates a portable .whl file we can simply pip install in the next stage
+WORKDIR /opt/pytorch/pytorch
+RUN pip3 install -r requirements.txt
+RUN MAX_JOBS=$(( $(nproc) * 5 / 10 )) python3 setup.py bdist_wheel
+
+# ==============================================================================
+# STAGE 2: RUNTIME
+# ==============================================================================
+FROM pytorch/pytorch:2.9.1-cuda12.8-cudnn9-runtime
+
+# Set environment variables (Directly mapped from the official Dockerfile)
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_BREAK_SYSTEM_PACKAGES=1 \
+    MKL_THREADING_LAYER=GNU \
+    OMP_NUM_THREADS=1 \
+    TF_CPP_MIN_LOG_LEVEL=3
+
+# Downloads to user config dir (as per official Dockerfile)
+ADD https://github.com/ultralytics/assets/releases/download/v0.0.0/Arial.ttf \
+    https://github.com/ultralytics/assets/releases/download/v0.0.0/Arial.Unicode.ttf \
+    /root/.config/Ultralytics/
+
+# Install linux packages (as per official Dockerfile)
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    gcc git zip unzip wget curl htop libgl1 libglib2.0-0 gnupg libsm6 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install 'uv' (Ensures uv is available for package installation)
+RUN pip3 install uv
+
+# Install the Custom Optimized PyTorch Wheel from Stage 1
+COPY --from=builder /opt/pytorch/pytorch/dist/*.whl /tmp/
+RUN pip3 install /tmp/*.whl && rm /tmp/*.whl
+
+# Create working directory and copy Ultralytics source for editable install
+WORKDIR /ultralytics
+COPY . .
+
+# Install ultralytics in editable mode and other pip packages
+# This ensures changes in mounted host repo are reflected.
+RUN uv pip install --system -e "." albumentations faster-coco-eval wandb && \
+    # Remove extra build files \
+    rm -rf tmp /root/.config/Ultralytics/persistent_cache.json
+
+
+# Usage Examples -------------------------------------------------------------------------------------------------------
+
+# Build and Push
+# t=ultralytics/ultralytics:latest && sudo docker build -f docker/Dockerfile -t $t . && sudo docker push $t
+
+# Pull and Run with access to all GPUs
+# t=ultralytics/ultralytics:latest && sudo docker pull $t && sudo docker run -it --ipc=host --gpus all $t
+
+# Pull and Run with access to GPUs 2 and 3 (inside container CUDA devices will appear as 0 and 1)
+# t=ultralytics/ultralytics:latest && sudo docker pull $t && sudo docker run -it --ipc=host --gpus '"device=2,3"' $t
+
+# Pull and Run with local directory access
+# t=ultralytics/ultralytics:latest && sudo docker pull $t && sudo docker run -it --ipc=host --gpus all -v "$(pwd)"/shared/datasets:/datasets $t
+
+# Kill all
+# sudo docker kill $(sudo docker ps -q)
+
+# Kill all image-based
+# sudo docker kill $(sudo docker ps -qa --filter ancestor=ultralytics/ultralytics:latest)
+
+# DockerHub tag update
+# t=ultralytics/ultralytics:latest tnew=ultralytics/ultralytics:v6.2 && sudo docker pull $t && sudo docker tag $t $tnew && sudo docker push $tnew
+
+# Clean up
+# sudo docker system prune -a --volumes
+
+# Update Ubuntu drivers
+# https://www.maketecheasier.com/install-nvidia-drivers-ubuntu/
+
+# DDP test
+# python -m torch.distributed.run --nproc_per_node 2 --master_port 1 train.py --epochs 3
+
+# GCP VM from Image
+# docker.io/ultralytics/ultralytics:latest
