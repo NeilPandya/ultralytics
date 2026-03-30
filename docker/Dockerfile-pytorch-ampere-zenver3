@@ -1,0 +1,21 @@
+# syntax=docker/dockerfile:1
+FROM pytorch/pytorch:2.11.0-cuda12.8-cudnn9-devel AS builder
+
+WORKDIR /opt/pytorch
+RUN git clone --recursive https://github.com/pytorch/pytorch.git && \
+    cd pytorch && \
+    git checkout v2.11.0 && \
+    git submodule update --init --recursive
+
+ENV CXXFLAGS="-march=znver3 -O3 -fPIC"
+ENV CFLAGS="-march=znver3 -O3 -fPIC"
+ENV USE_CUDA=1
+ENV TORCH_CUDA_ARCH_LIST="8.6"
+
+WORKDIR /opt/pytorch/pytorch
+RUN pip3 install -r requirements.txt
+RUN MAX_JOBS=$(( $(nproc) * 5 / 10 )) python3 setup.py bdist_wheel
+
+# Export the wheel as build artifact
+FROM scratch AS export
+COPY --from=builder /opt/pytorch/pytorch/dist/*.whl /
