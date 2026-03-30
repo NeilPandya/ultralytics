@@ -7,6 +7,9 @@
 #   Run this script from the root of the ultralytics project directory.
 #   ./build_docker_image.sh
 
+# Use BuildKit caching
+export DOCKER_BUILDKIT=1
+
 # Exit immediately if a command exits with a non-zero status.
 set -e
 # Treat unset variables as an error when substituting.
@@ -20,11 +23,22 @@ readonly DOCKER_USERNAME="neilpandya"
 # The name of the image on Docker Hub.
 readonly IMAGE_NAME="ultralytics"
 # Path to the Dockerfile.
-readonly DOCKERFILE_PATH="docker/Dockerfile-ampere-zen3"
+readonly DOCKERFILE_PATH="docker/Dockerfile-ultralytics-ampere-zenver3"
 # The hardware-specific architecture tag for this build.
 readonly ARCH_TAG="ampere-zen3"
 
 echo "--- Starting Ultralytics Docker Build Script ---"
+
+# --- Check and Create Wheels Directory ---
+echo "🔧 Checking for ./wheels directory..."
+if [ ! -d "./wheels" ]; then
+    echo "   Creating ./wheels directory..."
+    mkdir -p ./wheels
+    echo "   ✓ Directory ./wheels created successfully!"
+else
+    echo "   ✓ Directory ./wheels already exists."
+fi
+echo
 
 # --- Dynamic Version Detection ---
 echo "🔍 Detecting software versions..."
@@ -69,7 +83,7 @@ echo
 echo "🐳 Starting Docker build..."
 # Build once with the most specific tag. The --load flag is crucial to make the image
 # available to the local Docker daemon for the subsequent 'docker tag' commands.
-docker buildx build -f "$DOCKERFILE_PATH" -t "${FULL_VERSION_TAG}" . --load
+docker buildx build -f docker/Dockerfile-ultralytics-ampere-zenver3 -t neilpandya/ultralytics:latest --platform linux/amd64 -o type=local,dest=./wheels .
 
 echo "🏷️  Adding additional tags to the image..."
 docker tag "${FULL_VERSION_TAG}" "${LATEST_TAG}"
