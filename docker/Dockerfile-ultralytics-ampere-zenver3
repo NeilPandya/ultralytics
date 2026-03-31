@@ -30,13 +30,16 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Install 'uv' (Ensures uv is available for package installation)
-RUN pip3 install uv
+RUN pip3 install --break-system-packages uv
 
 # Install the Custom Optimized PyTorch Wheel
 # Note: The wheel must be built separately using Dockerfile-pytorch-zenver3-builder
-# and placed in the dist/ directory before building this Dockerfile
-COPY wheels/*.whl /tmp/torch.whl
-RUN pip3 install /tmp/torch.whl && rm /tmp/torch.whl
+# and placed in the wheels/ directory before building this Dockerfile
+COPY wheels/ /tmp/wheels/
+RUN WHEEL_FILE=$(ls /tmp/wheels/torch-*.whl) && \
+    pip3 install --break-system-packages "$WHEEL_FILE" && \
+    rm -rf /tmp/wheels/
+
 
 # Create working directory and copy Ultralytics source for editable install
 WORKDIR /ultralytics
@@ -44,7 +47,7 @@ COPY . .
 
 # Install ultralytics in editable mode and other pip packages
 # This ensures changes in mounted host repo are reflected.
-RUN uv pip install --system -e "." albumentations faster-coco-eval wandb && \
+RUN uv pip install --break-system-packages --system -e "." albumentations faster-coco-eval wandb && \
     # Remove extra build files \
     rm -rf tmp /root/.config/Ultralytics/persistent_cache.json
 
