@@ -14,7 +14,7 @@ RUN git clone --recursive https://github.com/pytorch/pytorch.git && \
     git submodule update --init --recursive
 
 # PyTorch's build system (especially Caffe2) has legacy code that can bypass standard compiler flags.
-# Keep all the AMD-specific optimizations (AVX2, FMA, etc.) while specifically excluding just AVX-512. This is for Zen 4 (`zenver3`) architectures.
+# Keep all the AMD-specific optimizations (AVX2, FMA, etc.) while specifically excluding just AVX-512. This is for Zen 4 (`znver3`) architectures.
 ENV CXXFLAGS="-march=znver3 -O3 -fPIC -mno-avx512f -mno-avx512bw -mno-avx512dq"
 ENV CFLAGS="-march=znver3 -O3 -fPIC -mno-avx512f -mno-avx512bw -mno-avx512dq"
 ENV USE_CUDA=1
