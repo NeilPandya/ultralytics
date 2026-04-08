@@ -10,7 +10,7 @@ set -o pipefail
 # --- Configuration ---
 readonly DOCKER_USERNAME="neilpandya"
 readonly IMAGE_NAME="ultralytics"
-readonly DOCKERFILE_PATH="docker/Dockerfile-ultralytics-ampere-zenver3"
+readonly DOCKERFILE_PATH="docker/bespoke/Dockerfile-ultralytics"
 readonly ARCH_TAG="ampere-zen3"
 
 echo "--- Starting Optimized Ultralytics Build ---"
