@@ -7,7 +7,7 @@
 FROM neilpandya/ultralytics:latest
 
 # Install JupyterLab for interactive development
-RUN uv pip install --system jupyterlab && \
+RUN uv pip install --system --break-system-packages jupyterlab && \
     # Create persistent data directory structure
     mkdir -p /data/{datasets,weights,runs} && \
     # Configure YOLO directories
