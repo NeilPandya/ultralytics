@@ -10,7 +10,7 @@ set -o pipefail
 # --- Configuration ---
 readonly DOCKER_USERNAME="neilpandya"
 readonly IMAGE_NAME="ultralytics"
-readonly DOCKERFILE_PATH="docker/Dockerfile-ampere-zenver3"
+readonly DOCKERFILE_PATH="docker/Dockerfile-jupyter-ampere-zenver3"
 readonly ARCH_TAG="jupyter-ampere-zen3"
 
 echo "--- Starting Optimized Ultralytics Build ---"
@@ -29,10 +29,8 @@ echo "🐳 Building Docker image using bespoke PyTorch..."
 docker buildx build \
     -f "$DOCKERFILE_PATH" \
     -t "${FULL_VERSION_TAG}" \
-    -t "${LATEST_TAG}" \
     --load .
 
 echo "✅ Build complete!"
 echo "Tags created:"
 echo "  - ${FULL_VERSION_TAG}"
-echo "  - ${LATEST_TAG}"
