@@ -1,5 +1,5 @@
 # Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
-FROM neilpandya/pytorch:2.11.0-cu1281-cudnn9-ampere-znver3
+FROM neilpandya/pytorch:2.11.0-cu128-cudnn9-ampere-znver3
 
 # 1. Set environment variables
 # Include `-march=znver3` here so any dependencies compiled by `uv` are optimized
